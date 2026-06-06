@@ -1,1 +1,121 @@
+//@version=6
+indicator(title="Phoelix 15min Sniper Bot - BE Shield Only", overlay = true)
 
+// ==========================================
+// TELEGRAM CONFIGURATION
+// ==========================================
+telegram_chat_id   = input.string("xxxxxxxxxxxxxxxxxxx", title="Telegram Chat ID", group="Telegram Config")
+telegram_bot_token = input.string("xxxxxxxxxxxxxxxxxxx", title="Telegram Bot Token", group="Telegram Config")
+
+// ==========================================
+// CENTRALIZED LOT SIZING ENGINE
+// ==========================================
+tv_forex_lot = input.float(0.03, title="Forex Lot Sizing (e.g. 0.03)", step=0.01, group="VPS Volume Settings")
+tv_gold_lot  = input.float(0.02, title="Gold Lot Sizing (e.g. 0.02)", step=0.01, group="VPS Volume Settings")
+tv_slvr_lot  = input.float(0.01, title="Silver Lot Sizing (e.g. 0.01)", step=0.01, group="VPS Volume Settings")
+tv_usoil_lot = input.float(0.01, title="Oil Lot Sizing (e.g. 0.01)", step=0.01, group="VPS Volume Settings")
+
+// ==========================================
+// SESSION CONFIGURATION & OFF-WHITE VISUALIZER (UPDATED TO 15:45 NY CUTOFF)
+// ==========================================
+session_input = input.session("0200-1545:23456", title="Active Trading Session", group="Session Settings")
+timezone_sel  = input.string("America/New_York", title="Session Timezone", group="Session Settings", options=["America/New_York", "Europe/London", "UTC"])
+
+in_session    = not na(time(timeframe.period, session_input, timezone_sel))
+bgcolor(not in_session ? color.new(#f4f4f0, 92) : na)
+
+src = close
+
+// ==========================================
+// SNIPER & ANCHOR ALGOS
+// ==========================================
+a_fast     = input.float(2.0, title="Sniper Sensitivity", step=0.1, group="Sniper Settings")
+c_fast     = input.int(10, title="Sniper ATR Period", group="Sniper Settings")
+nLoss_fast = a_fast * ta.atr(c_fast)
+
+var float xATRTrailingStop_fast = 0.0
+var int pos_fast = 0
+xATRTrailingStop_fast := src > nz(xATRTrailingStop_fast[1], 0) and src[1] > nz(xATRTrailingStop_fast[1], 0) ? math.max(nz(xATRTrailingStop_fast[1]), src - nLoss_fast) : src < nz(xATRTrailingStop_fast[1], 0) and src[1] < nz(xATRTrailingStop_fast[1], 0) ? math.min(nz(xATRTrailingStop_fast[1]), src + nLoss_fast) : src > nz(xATRTrailingStop_fast[1], 0) ? src - nLoss_fast : src + nLoss_fast
+pos_fast := src[1] < nz(xATRTrailingStop_fast[1], 0) and src > nz(xATRTrailingStop_fast[1], 0) ? 1 : src[1] > nz(xATRTrailingStop_fast[1], 0) and src < nz(xATRTrailingStop_fast[1], 0) ? -1 : nz(pos_fast[1], 0)
+
+ema_fast   = ta.ema(src, 1)
+above_fast = ta.crossover(ema_fast, xATRTrailingStop_fast)
+below_fast = ta.crossover(xATRTrailingStop_fast, ema_fast)
+buy_trigger  = ((pos_fast == 1 and pos_fast[1] == -1) or (above_fast and pos_fast == 1))
+sell_trigger = ((pos_fast == -1 and pos_fast[1] == 1) or (below_fast and pos_fast == -1))
+
+a_slow     = input.float(2.0, title="Anchor Sensitivity", step=0.1, group="Anchor Settings")
+c_slow     = input.int(300, title="Anchor ATR Period", group="Anchor Settings")
+nLoss_slow = a_slow * ta.atr(c_slow)
+
+var float xATRTrailingStop_slow = 0.0
+var int pos_slow = 0
+xATRTrailingStop_slow := src > nz(xATRTrailingStop_slow[1], 0) and src[1] > nz(xATRTrailingStop_slow[1], 0) ? math.max(nz(xATRTrailingStop_slow[1]), src - nLoss_slow) : src < nz(xATRTrailingStop_slow[1], 0) and src[1] < nz(xATRTrailingStop_slow[1], 0) ? math.min(nz(xATRTrailingStop_slow[1]), src + nLoss_slow) : src > nz(xATRTrailingStop_slow[1], 0) ? src - nLoss_slow : src + nLoss_slow
+pos_slow := src[1] < nz(xATRTrailingStop_slow[1], 0) and src > nz(xATRTrailingStop_slow[1], 0) ? 1 : src[1] > nz(xATRTrailingStop_slow[1], 0) and src < nz(xATRTrailingStop_slow[1], 0) ? -1 : nz(pos_slow[1], 0)
+
+macro_bearish = (pos_slow == -1)
+macro_bullish = (pos_slow == 1)
+
+// ==========================================
+// LOCKED STATE EXECUTION
+// ==========================================
+buy_entry  = buy_trigger and in_session and macro_bullish
+sell_entry = sell_trigger and in_session and macro_bearish
+
+var int current_state = 0
+if buy_entry
+    current_state := 1
+else if sell_entry
+    current_state := -1
+
+sniper_buy_exit  = (current_state[1] == 1) and (close < xATRTrailingStop_fast)
+sniper_sell_exit = (current_state[1] == -1) and (close > xATRTrailingStop_fast)
+session_end_exit = (current_state[1] != 0) and (not in_session and in_session[1])
+
+buy_exit  = sniper_buy_exit or (session_end_exit and current_state[1] == 1)
+sell_exit = sniper_sell_exit or (session_end_exit and current_state[1] == -1)
+
+if buy_exit or sell_exit or not in_session
+    current_state := 0
+
+// ==========================================
+// GRAPHICS ENGINE
+// ==========================================
+plot(xATRTrailingStop_fast, title="Sniper Line", color=color.new(#00ffea, 40), linewidth=1)
+plot(xATRTrailingStop_slow, title="Anchor Line", color=color.new(#ff0055, 10), linewidth=2)
+
+plotshape(buy_entry,  title="Buy",  text='BUY',  style=shape.labelup,   location=location.belowbar, color=color.green, textcolor=color.white, size=size.small)
+plotshape(sell_entry, title="Sell", text='SELL', style=shape.labeldown, location=location.abovebar, color=color.red,   textcolor=color.white, size=size.small)
+plotshape(buy_exit and not session_end_exit,   title="Exit Long",   text='EXIT LONG',  style=shape.labeldown, location=location.abovebar, color=color.orange, textcolor=color.white, size=size.small)
+plotshape(sell_exit and not session_end_exit,  title="Exit Short",  text='EXIT SHORT', style=shape.labelup,   location=location.belowbar, color=color.orange, textcolor=color.white, size=size.small)
+plotshape(session_end_exit, title="Clock Exit", text="CLOCK CUTOFF", style=shape.labeldown, location=location.abovebar, color=color.purple, textcolor=color.white, size=size.small)
+
+// ==========================================
+// METALS & EXNESS USOILm ASSET ROUTER
+// ==========================================
+asset_pair = syminfo.ticker
+
+is_gold   = str.contains(asset_pair, "XAU") or str.contains(asset_pair, "GOLD")
+is_silver = str.contains(asset_pair, "XAG") or str.contains(asset_pair, "SILVER")
+is_usoil  = str.contains(asset_pair, "USOIL") or str.contains(asset_pair, "WTI") or str.contains(asset_pair, "CRUDE")
+
+active_assigned_lot = is_gold ? tv_gold_lot : (is_silver ? tv_slvr_lot : (is_usoil ? tv_usoil_lot : tv_forex_lot))
+
+// ==========================================
+// PARSER-OPTIMIZED MACHINE ALERTS
+// ==========================================
+send_telegram_alert(msg) =>
+    '{"bot_token": "' + telegram_bot_token + '", "chat_id": "' + telegram_chat_id + '", "text": "' + msg + '"}'
+
+if buy_entry
+    string buy_msg = "SIGNAL_ENTRY | " + asset_pair + " | BUY | " + str.tostring(close) + " | " + str.tostring(xATRTrailingStop_fast) + " | " + str.tostring(active_assigned_lot)
+    alert(send_telegram_alert(buy_msg), alert.freq_once_per_bar_close)
+
+if sell_entry
+    string sell_msg = "SIGNAL_ENTRY | " + asset_pair + " | SELL | " + str.tostring(close) + " | " + str.tostring(xATRTrailingStop_fast) + " | " + str.tostring(active_assigned_lot)
+    alert(send_telegram_alert(sell_msg), alert.freq_once_per_bar_close)
+
+if buy_exit or sell_exit
+    string exit_direction = buy_exit ? "LONG" : "SHORT"
+    string exit_msg = "SIGNAL_EXIT | " + asset_pair + " | " + exit_direction
+    alert(send_telegram_alert(exit_msg), alert.freq_once_per_bar_close)
