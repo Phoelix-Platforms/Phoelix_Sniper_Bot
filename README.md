@@ -1,4 +1,4 @@
-# Phoelix Sniper Bot (`Phoelix_Sniper_Bot.pine`)
+# Phoelix Sniper Bot (`Phoelix_Sniper_Bot`)
 
 <p align="center">
   <strong>The core analytical intelligence engine powering the Phoelix algorithmic trading infrastructure.</strong>
@@ -14,7 +14,7 @@
 
 ## 🎯 Overview
 
-**Phoelix_Sniper_Bot.pine** is the proprietary analytical engine running natively on TradingView. Built with Pine Script v6, it scans market structures in real time, isolates high-probability intraday trend setups for Gold and US Oil, and instantly fires off structured alert data to the execution pipeline.
+**Phoelix_Sniper_Bot** is the proprietary analytical engine running natively on TradingView. Built with Pine Script v6, it scans market structures in real time, isolates high-probability intraday trend setups for Gold and US Oil, and instantly fires off structured alert data to the execution pipeline.
 
 ---
 
@@ -29,12 +29,12 @@
 
 ## 🔒 Proprietary Status
 
-> 🔒 **Intellectual Property Notice:** The source code, mathematical algorithms, and strategy parameters contained within this module represent confidential core assets of Phoelix Software Studio. 
+> 🔒 **Intellectual Property Notice:** The source code, mathematical algorithms, and strategy parameters contained within this module represent confidential core assets of Phoelix Platforms Ltd. 
 > 
 > **This component is strictly closed-source and protected under administrative workspace access gating rules.**
 
 ---
 
 <p align="center">
-  &copy; 2026 Phoelix Software Studio. All Rights Reserved.
+  &copy; 2026 Phoelix Platforms Ltd. All Rights Reserved.
 </p>
