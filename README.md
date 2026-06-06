@@ -1,4 +1,4 @@
-# Phoelix Sniper Bot (`Phoelix_Sniper_Bot`)
+# Phoelix Sniper Bot
 
 <p align="center">
   <strong>The core analytical intelligence engine powering the Phoelix algorithmic trading infrastructure.</strong>
