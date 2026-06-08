@@ -1,11 +1,11 @@
 //@version=6
-indicator(title="Phoelix 15min Sniper Bot - BE Shield Only", overlay = true)
+indicator(title="Phoelix 15min Sniper Bot - Raw Ride Edition", overlay = true)
 
 // ==========================================
 // TELEGRAM CONFIGURATION
 // ==========================================
-telegram_chat_id   = input.string("xxxxxxxxxxxxxxxxxxx", title="Telegram Chat ID", group="Telegram Config")
-telegram_bot_token = input.string("xxxxxxxxxxxxxxxxxxx", title="Telegram Bot Token", group="Telegram Config")
+telegram_chat_id   = input.string("-100xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", title="Telegram Chat ID", group="Telegram Config")
+telegram_bot_token = input.string("89xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxI2pc", title="Telegram Bot Token", group="Telegram Config")
 
 // ==========================================
 // CENTRALIZED LOT SIZING ENGINE
@@ -16,7 +16,7 @@ tv_slvr_lot  = input.float(0.01, title="Silver Lot Sizing (e.g. 0.01)", step=0.0
 tv_usoil_lot = input.float(0.01, title="Oil Lot Sizing (e.g. 0.01)", step=0.01, group="VPS Volume Settings")
 
 // ==========================================
-// SESSION CONFIGURATION & OFF-WHITE VISUALIZER (UPDATED TO 15:45 NY CUTOFF)
+// SESSION CONFIGURATION & OFF-WHITE VISUALIZER (15:45 NY CUTOFF)
 // ==========================================
 session_input = input.session("0200-1545:23456", title="Active Trading Session", group="Session Settings")
 timezone_sel  = input.string("America/New_York", title="Session Timezone", group="Session Settings", options=["America/New_York", "Europe/London", "UTC"])
