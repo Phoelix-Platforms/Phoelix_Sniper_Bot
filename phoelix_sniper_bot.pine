@@ -5,7 +5,7 @@ indicator(title="Phoelix 15min Sniper Bot - Raw Ride Edition", overlay = true)
 // TELEGRAM CONFIGURATION
 // ==========================================
 telegram_chat_id   = input.string("-100xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", title="Telegram Chat ID", group="Telegram Config")
-telegram_bot_token = input.string("89xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxI2pc", title="Telegram Bot Token", group="Telegram Config")
+telegram_bot_token = input.string("89xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxI2c", title="Telegram Bot Token", group="Telegram Config")
 
 // ==========================================
 // CENTRALIZED LOT SIZING ENGINE
