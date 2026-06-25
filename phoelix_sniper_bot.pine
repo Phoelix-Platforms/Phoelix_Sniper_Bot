@@ -1,5 +1,5 @@
 //@version=6
-indicator(title="Phoelix Sniper Bot - Velocity Decay Edition", overlay = true)
+indicator(title="Phoelix 15min Sniper Bot - Restored Labels", overlay = true)
 
 // ==========================================
 // TELEGRAM CONFIGURATION
@@ -16,7 +16,7 @@ tv_slvr_lot  = input.float(0.01, title="Silver Lot Sizing (e.g. 0.01)", step=0.0
 tv_usoil_lot = input.float(0.01, title="Oil Lot Sizing (e.g. 0.01)", step=0.01, group="VPS Volume Settings")
 
 // ==========================================
-// SESSION CONFIGURATION & VISUALIZER
+// SESSION CONFIGURATION & OFF-WHITE VISUALIZER (15:45 NY CUTOFF)
 // ==========================================
 session_input = input.session("0200-1545:23456", title="Active Trading Session", group="Session Settings")
 timezone_sel  = input.string("America/New_York", title="Session Timezone", group="Session Settings", options=["America/New_York", "Europe/London", "UTC"])
@@ -27,47 +27,20 @@ bgcolor(not in_session ? color.new(#f4f4f0, 92) : na)
 src = close
 
 // ==========================================
-// CORE FILTERS: EMA TREND & RSI MOMENTUM
+// ANTI-CHOP RANGE FILTER ENGINE
 // ==========================================
-ema_fast_len = input.int(20, title="EMA Fast Period", group="Base Filters")
-ema_slow_len = input.int(50, title="EMA Slow Period", group="Base Filters")
-ema_fast = ta.ema(src, ema_fast_len)
-ema_slow = ta.ema(src, ema_slow_len)
+use_adx_filter = input.bool(true, title="Enable Anti-Chop Filter", group="Anti-Chop Filter")
+adx_length     = input.int(14, title="ADX Smoothing Period", group="Anti-Chop Filter")
+adx_threshold  = input.float(22.0, title="Minimum Trend Strength (ADX)", step=0.5, group="Anti-Chop Filter")
 
-ema_bullish = (src > ema_fast) and (ema_fast > ema_slow)
-ema_bearish = (src < ema_fast) and (ema_fast < ema_slow)
-
-rsi_len = input.int(14, title="RSI Lookback Period", group="Base Filters")
-rsi_val = ta.rsi(src, rsi_len)
-
-rsi_bullish = (rsi_val > 50)
-rsi_bearish = (rsi_val < 50)
+[_, _, adx_val] = ta.dmi(adx_length, adx_length)
+market_is_trending = not use_adx_filter or (adx_val > adx_threshold)
 
 // ==========================================
-// NEW: DYNAMIC VELOCITY DECAY ENGINE
+// SNIPER & ANCHOR ALGOS
 // ==========================================
-vel_roc_len  = input.int(5, title="Velocity Calculation Window", group="Velocity Engine")
-vel_smooth   = input.int(3, title="Velocity Smoothing Line", group="Velocity Engine")
-vel_thresh   = input.float(0.02, title="Minimum Entry Velocity Trigger", step=0.01, group="Velocity Engine")
-
-// Calculate pure velocity via a smoothed Rate of Change (ROC)
-raw_velocity = ta.roc(src, vel_roc_len)
-smoothed_vel = ta.ema(raw_velocity, vel_smooth)
-velocity_signal = ta.sma(smoothed_vel, 4) // Serves as the baseline boundary for decay
-
-// Conditions for high speed entry
-high_vel_bull = (smoothed_vel > vel_thresh)
-high_vel_bear = (smoothed_vel < -vel_thresh)
-
-// Conditions for velocity reduction (Decay)
-velocity_slowing_bull = ta.crossunder(smoothed_vel, velocity_signal) or (smoothed_vel <= 0)
-velocity_slowing_bear = ta.crossover(smoothed_vel, velocity_signal) or (smoothed_vel >= 0)
-
-// ==========================================
-// SNIPER ENTRY TRIGGERS (RAW RIDE BASICS)
-// ==========================================
-a_fast     = input.float(2.0, title="Sniper Sensitivity", step=0.1, group="Sniper Trigger Settings")
-c_fast     = input.int(10, title="Sniper ATR Period", group="Sniper Trigger Settings")
+a_fast     = input.float(2.0, title="Sniper Sensitivity", step=0.1, group="Sniper Settings")
+c_fast     = input.int(10, title="Sniper ATR Period", group="Sniper Settings")
 nLoss_fast = a_fast * ta.atr(c_fast)
 
 var float xATRTrailingStop_fast = 0.0
@@ -75,54 +48,61 @@ var int pos_fast = 0
 xATRTrailingStop_fast := src > nz(xATRTrailingStop_fast[1], 0) and src[1] > nz(xATRTrailingStop_fast[1], 0) ? math.max(nz(xATRTrailingStop_fast[1]), src - nLoss_fast) : src < nz(xATRTrailingStop_fast[1], 0) and src[1] < nz(xATRTrailingStop_fast[1], 0) ? math.min(nz(xATRTrailingStop_fast[1]), src + nLoss_fast) : src > nz(xATRTrailingStop_fast[1], 0) ? src - nLoss_fast : src + nLoss_fast
 pos_fast := src[1] < nz(xATRTrailingStop_fast[1], 0) and src > nz(xATRTrailingStop_fast[1], 0) ? 1 : src[1] > nz(xATRTrailingStop_fast[1], 0) and src < nz(xATRTrailingStop_fast[1], 0) ? -1 : nz(pos_fast[1], 0)
 
-ema_fast_trigger = ta.ema(src, 1)
-above_fast = ta.crossover(ema_fast_trigger, xATRTrailingStop_fast)
-below_fast = ta.crossover(xATRTrailingStop_fast, ema_fast_trigger)
-
+ema_fast   = ta.ema(src, 1)
+above_fast = ta.crossover(ema_fast, xATRTrailingStop_fast)
+below_fast = ta.crossover(xATRTrailingStop_fast, ema_fast)
 buy_trigger  = ((pos_fast == 1 and pos_fast[1] == -1) or (above_fast and pos_fast == 1))
 sell_trigger = ((pos_fast == -1 and pos_fast[1] == 1) or (below_fast and pos_fast == -1))
 
-// ==========================================
-// LOCKED STATE EXECUTION (VELOCITY ENFORCED)
-// ==========================================
-buy_entry  = buy_trigger and in_session and ema_bullish and rsi_bullish and high_vel_bull
-sell_entry = sell_trigger and in_session and ema_bearish and rsi_bearish and high_vel_bear
+a_slow     = input.float(2.0, title="Anchor Sensitivity", step=0.1, group="Anchor Settings")
+c_slow     = input.int(300, title="Anchor ATR Period", group="Anchor Settings")
+nLoss_slow = a_slow * ta.atr(c_slow)
 
+var float xATRTrailingStop_slow = 0.0
+var int pos_slow = 0
+xATRTrailingStop_slow := src > nz(xATRTrailingStop_slow[1], 0) and src[1] > nz(xATRTrailingStop_slow[1], 0) ? math.max(nz(xATRTrailingStop_slow[1]), src - nLoss_slow) : src < nz(xATRTrailingStop_slow[1], 0) and src[1] < nz(xATRTrailingStop_slow[1], 0) ? math.min(nz(xATRTrailingStop_slow[1]), src + nLoss_slow) : src > nz(xATRTrailingStop_slow[1], 0) ? src - nLoss_slow : src + nLoss_slow
+pos_slow := src[1] < nz(xATRTrailingStop_slow[1], 0) and src > nz(xATRTrailingStop_slow[1], 0) ? 1 : src[1] > nz(xATRTrailingStop_slow[1], 0) and src < nz(xATRTrailingStop_slow[1], 0) ? -1 : nz(pos_slow[1], 0)
+
+macro_bearish = (pos_slow == -1)
+macro_bullish = (pos_slow == 1)
+
+// ==========================================
+// LOCKED STATE EXECUTION
+// ==========================================
 var int current_state = 0
+
+// Gated with current_state == 0 to prevent multiple overlapping entries/glitches
+buy_entry  = buy_trigger and in_session and macro_bullish and market_is_trending and current_state == 0
+sell_entry = sell_trigger and in_session and macro_bearish and market_is_trending and current_state == 0
+
 if buy_entry
     current_state := 1
 else if sell_entry
     current_state := -1
 
-// Dynamic Exit: Closes when structural velocity reduces, or as an emergency stop protection
-vel_buy_exit     = (current_state[1] == 1) and velocity_slowing_bull
-vel_sell_exit    = (current_state[1] == -1) and velocity_slowing_bear
-emergency_stop   = (current_state[1] == 1 and close < xATRTrailingStop_fast) or (current_state[1] == -1 and close > xATRTrailingStop_fast)
+sniper_buy_exit  = (current_state[1] == 1) and (close < xATRTrailingStop_fast)
+sniper_sell_exit = (current_state[1] == -1) and (close > xATRTrailingStop_fast)
 session_end_exit = (current_state[1] != 0) and (not in_session and in_session[1])
 
-buy_exit  = (current_state[1] == 1) and (vel_buy_exit or emergency_stop or session_end_exit)
-sell_exit = (current_state[1] == -1) and (vel_sell_exit or emergency_stop or session_end_exit)
+buy_exit  = sniper_buy_exit or (session_end_exit and current_state[1] == 1)
+sell_exit = sniper_sell_exit or (session_end_exit and current_state[1] == -1)
 
 if buy_exit or sell_exit or not in_session
     current_state := 0
 
 // ==========================================
-// GRAPHICS ENGINE
+// GRAPHICS ENGINE (TRADINGVIEW INTERFACE ONLY)
 // ==========================================
-plot(ema_fast, title="EMA Fast Trend", color=color.new(color.orange, 60), linewidth=1)
-plot(ema_slow, title="EMA Slow Trend", color=color.new(color.blue, 40), linewidth=2)
-
-// Paint candles slightly to visualize hyper-velocity waves instantly
-barcolor(high_vel_bull ? color.new(#00ffaa, 30) : (high_vel_bear ? color.new(#ff0055, 30) : na))
+plot(xATRTrailingStop_fast, title="Sniper Line", color=color.new(#00ffea, 40), linewidth=1)
+plot(xATRTrailingStop_slow, title="Anchor Line", color=color.new(#ff0055, 10), linewidth=2)
 
 plotshape(buy_entry,  title="Buy",  text='BUY',  style=shape.labelup,   location=location.belowbar, color=color.green, textcolor=color.white, size=size.small)
 plotshape(sell_entry, title="Sell", text='SELL', style=shape.labeldown, location=location.abovebar, color=color.red,   textcolor=color.white, size=size.small)
 
-// Label differentiation to show you exactly why it exited
-plotshape(buy_exit and vel_buy_exit,   title="Velocity Exit Long",  text='VEL DECAY', style=shape.labeldown, location=location.abovebar, color=color.orange, textcolor=color.white, size=size.small)
-plotshape(sell_exit and vel_sell_exit, title="Velocity Exit Short", text='VEL DECAY', style=shape.labelup,   location=location.belowbar, color=color.orange, textcolor=color.white, size=size.small)
-plotshape(emergency_stop, title="Hard Stop protection", text="STOP HIT", style=shape.labeldown, location=location.abovebar, color=color.maroon, textcolor=color.white, size=size.small)
-plotshape(session_end_exit, title="Clock Exit", text="CLOCK CUTOFF", style=shape.labeldown, location=location.abovebar, color=color.purple, textcolor=color.white, size=size.small)
+// Restored classic exit labels verbatim
+plotshape(buy_exit and not session_end_exit,   title="Exit Long",   text='EXIT LONG',    style=shape.labeldown, location=location.abovebar, color=color.orange, textcolor=color.white, size=size.small)
+plotshape(sell_exit and not session_end_exit,  title="Exit Short",  text='EXIT SHORT',   style=shape.labelup,   location=location.belowbar, color=color.orange, textcolor=color.white, size=size.small)
+plotshape(session_end_exit,                    title="Clock Exit",  text="CLOCK CUTOFF", style=shape.labeldown, location=location.abovebar, color=color.purple, textcolor=color.white, size=size.small)
 
 // ==========================================
 // METALS & EXNESS USOILm ASSET ROUTER
@@ -150,6 +130,6 @@ if sell_entry
     alert(send_telegram_alert(sell_msg), alert.freq_once_per_bar_close)
 
 if buy_exit or sell_exit
-    string exit_direction = (buy_exit and vel_buy_exit) or (buy_exit and emergency_stop) ? "LONG" : "SHORT"
+    string exit_direction = buy_exit ? "LONG" : "SHORT"
     string exit_msg = "SIGNAL_EXIT | " + asset_pair + " | " + exit_direction
     alert(send_telegram_alert(exit_msg), alert.freq_once_per_bar_close)
