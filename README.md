@@ -1,4 +1,4 @@
-# Phoelix Sniper Bot
+# Phoelix Sniper Bot (Babel 2.5)
 
 <p align="center">
   <strong>The core analytical intelligence engine powering the Phoelix algorithmic trading infrastructure.</strong>
