@@ -1,11 +1,11 @@
 //@version=6
-indicator(title="Phoelix 15min Sniper Bot - Raw Ride Edition", overlay = true)
+indicator(title="Phoelix 15min Sniper Bot - Restored Labels", overlay = true)
 
 // ==========================================
 // TELEGRAM CONFIGURATION
 // ==========================================
-telegram_chat_id   = input.string("-100xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", title="Telegram Chat ID", group="Telegram Config")
-telegram_bot_token = input.string("89xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxI2c", title="Telegram Bot Token", group="Telegram Config")
+telegram_chat_id   = input.string("-1003912338001", title="Telegram Chat ID", group="Telegram Config")
+telegram_bot_token = input.string("8929198079:AAE_P4WVy7NlZLtrytg3yfLSIdfy35xI2pc", title="Telegram Bot Token", group="Telegram Config")
 
 // ==========================================
 // CENTRALIZED LOT SIZING ENGINE
@@ -25,6 +25,16 @@ in_session    = not na(time(timeframe.period, session_input, timezone_sel))
 bgcolor(not in_session ? color.new(#f4f4f0, 92) : na)
 
 src = close
+
+// ==========================================
+// ANTI-CHOP RANGE FILTER ENGINE
+// ==========================================
+use_adx_filter = input.bool(true, title="Enable Anti-Chop Filter", group="Anti-Chop Filter")
+adx_length     = input.int(14, title="ADX Smoothing Period", group="Anti-Chop Filter")
+adx_threshold  = input.float(22.0, title="Minimum Trend Strength (ADX)", step=0.5, group="Anti-Chop Filter")
+
+[_, _, adx_val] = ta.dmi(adx_length, adx_length)
+market_is_trending = not use_adx_filter or (adx_val > adx_threshold)
 
 // ==========================================
 // SNIPER & ANCHOR ALGOS
@@ -59,10 +69,12 @@ macro_bullish = (pos_slow == 1)
 // ==========================================
 // LOCKED STATE EXECUTION
 // ==========================================
-buy_entry  = buy_trigger and in_session and macro_bullish
-sell_entry = sell_trigger and in_session and macro_bearish
-
 var int current_state = 0
+
+// Gated with current_state == 0 to prevent multiple overlapping entries/glitches
+buy_entry  = buy_trigger and in_session and macro_bullish and market_is_trending and current_state == 0
+sell_entry = sell_trigger and in_session and macro_bearish and market_is_trending and current_state == 0
+
 if buy_entry
     current_state := 1
 else if sell_entry
@@ -79,16 +91,18 @@ if buy_exit or sell_exit or not in_session
     current_state := 0
 
 // ==========================================
-// GRAPHICS ENGINE
+// GRAPHICS ENGINE (TRADINGVIEW INTERFACE ONLY)
 // ==========================================
 plot(xATRTrailingStop_fast, title="Sniper Line", color=color.new(#00ffea, 40), linewidth=1)
 plot(xATRTrailingStop_slow, title="Anchor Line", color=color.new(#ff0055, 10), linewidth=2)
 
 plotshape(buy_entry,  title="Buy",  text='BUY',  style=shape.labelup,   location=location.belowbar, color=color.green, textcolor=color.white, size=size.small)
 plotshape(sell_entry, title="Sell", text='SELL', style=shape.labeldown, location=location.abovebar, color=color.red,   textcolor=color.white, size=size.small)
-plotshape(buy_exit and not session_end_exit,   title="Exit Long",   text='EXIT LONG',  style=shape.labeldown, location=location.abovebar, color=color.orange, textcolor=color.white, size=size.small)
-plotshape(sell_exit and not session_end_exit,  title="Exit Short",  text='EXIT SHORT', style=shape.labelup,   location=location.belowbar, color=color.orange, textcolor=color.white, size=size.small)
-plotshape(session_end_exit, title="Clock Exit", text="CLOCK CUTOFF", style=shape.labeldown, location=location.abovebar, color=color.purple, textcolor=color.white, size=size.small)
+
+// Restored classic exit labels verbatim
+plotshape(buy_exit and not session_end_exit,   title="Exit Long",   text='EXIT LONG',    style=shape.labeldown, location=location.abovebar, color=color.orange, textcolor=color.white, size=size.small)
+plotshape(sell_exit and not session_end_exit,  title="Exit Short",  text='EXIT SHORT',   style=shape.labelup,   location=location.belowbar, color=color.orange, textcolor=color.white, size=size.small)
+plotshape(session_end_exit,                    title="Clock Exit",  text="CLOCK CUTOFF", style=shape.labeldown, location=location.abovebar, color=color.purple, textcolor=color.white, size=size.small)
 
 // ==========================================
 // METALS & EXNESS USOILm ASSET ROUTER
