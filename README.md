@@ -24,6 +24,8 @@
 * **Automated Risk Calculations:** Built-in allocation engine that dynamically packages risk variables and asset-specific lot sizes (`tv_gold_lot`, `tv_usoil_lot`) directly into the alert payload.
 * **Capital Protection Guard:** Features a hard New York session cutoff matrix to halt trading operations automatically before market close spreads widen.
 
+---
+
 <p align="center">
   &copy; 2026 Phoelix Platforms Ltd. All Rights Reserved.
 </p>
