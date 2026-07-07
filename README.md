@@ -7,7 +7,6 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Script%20Version-v6.0-007ACC?style=flat-square" alt="Pine Script Version">
   <img src="https://img.shields.io/badge/Environment-TradingView-2962FF?style=flat-square" alt="TradingView">
-  <img src="https://img.shields.io/badge/Status-Closed--Source-D93F0B?style=flat-square" alt="Status">
 </p>
 
 ---
